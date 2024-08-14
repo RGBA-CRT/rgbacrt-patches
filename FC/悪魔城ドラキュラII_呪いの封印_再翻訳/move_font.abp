@@ -1,0 +1,43 @@
+#console
+#include<RGBALib.sbp>
+
+
+Dim bin As BufferClass
+ReadFileToBufferClass("ƒhƒ‰2_retrans_jp_MMC1_ƒIƒZ.nes", bin)
+Dump(bin.ptr, 128)
+
+
+CopyChrRom(bin.ptr + &H31010, bin.ptr + &H20010,4*16+2)
+CopyChrRom(bin.ptr + &H31010, bin.ptr + &H22010,4*16+2)
+CopyChrRom(bin.ptr + &H31010, bin.ptr + &H24010,4*16+2)
+CopyChrRom(bin.ptr + &H31010, bin.ptr + &H26010,4*16+2)
+CopyChrRom(bin.ptr + &H31010, bin.ptr + &H28010,4*16+2)
+CopyChrRom(bin.ptr + &H31010, bin.ptr + &H2b010,4*16+2)
+SaveFileToBufferClass("out.nes", bin)
+
+
+Sub CopyChrRom(src AS BytePtr, dst As BytePtr, cnt As Long)
+	memcpy(dst, src, cnt * (2*8))
+'	FillMemory(dst, cnt * (2*8), &HA5)
+End Sub
+
+Function ReadFileToBufferClass(filename AS BytePtr, ByRef bin AS BufferClass) AS BOOL
+	Dim file as File
+	if file.openFile(filename, GENERIC_READ) = FALSE Then
+		ExitFunction
+	Endif
+	bin.alloc(file.length())
+	bin.setLength(file.length())
+	file.read(bin.ptr, bin.length())
+	file.close()
+	ReadFileToBufferClass = TRUE
+End Function
+Function SaveFileToBufferClass(filename AS BytePtr, ByRef bin AS BufferClass) AS BOOL
+	Dim file as File
+	if file.openFile(filename, GENERIC_WRITE) = FALSE Then
+		ExitFunction
+	Endif
+	file.write(bin.ptr, bin.length())
+	file.close()
+	SaveFileToBufferClass = TRUE
+End Function

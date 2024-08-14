@@ -1,0 +1,156 @@
+# This is development log of the patch written in Japanese.
+# Text encodeing is UTF-8
+#
+
+0640h-065fhが入力欄のメモリ空間
+6A0hがカーソル位置で6a1hが1でENDへカーソルが行く
+
+パッドコードは＄0004
+offset FD60h
+
+パスワード入力時割り込み
+20 3B C2 -> 20 60 FD
+
+;ここに上書き元のJSRを入れる
+JSR $C23b
+
+;パスワード入力時Bボタンで1文字戻る
+PHA ;save Areg
+
+;process every 8frame
+  LDA $1A
+  AND #$07
+  BNE EXIT  ;8フレーム目じゃなければ終わる
+
+CHECK_KEY:
+  LDA $04
+  AND #$40   ;check B button
+  BEQ EXIT  ;Bボタンが1じゃなければ終わる
+
+DO_BACK:
+  LDA $06A1
+  BEQ DO_DEC ;06A1hが1じゃなければDO_DECへ
+  dec $06A1  ;層であれば06A1hを0にする
+
+  DO_DEC:
+	LDX $06A0
+	DEX
+	BPL SAVE_CUR  ;オーバーフローしなかったら終了
+		LDX #$00
+		
+	SAVE_CUR:
+		STX $06A0
+  
+EXIT:
+  PLA
+  RTS
+
+  作ってから気づいたが、標準でBボタン+十字キーで進む・戻るができる
+  中古で買っていたから知らなかった…
+  この機能はつぶす。
+
+  --------------------------
+6c=space
+
+最初に6Cクリアしているのは
+BE9Ahあたり(ROM:7E9A)
+
+B9D5: EA EA EA
+
+コンテニュー時にSRAMからロードするプログラム
+offset FDA0h
+
+;set cur to "END"
+LDA #$01
+STA $06a1
+
+;copy 6020h-6020h
+LDX #$1F
+cpy_loop:
+LDA $6020, X
+STA $0640, X
+DEX
+BPL cpy_loop
+
+;exit
+RTS
+
+-----------
+↑でINPUTBOXをクリアする処理を消してしまったので自前で追加
+
+offset FDD0h
+BDF1 20 xx xx -> 20 D0 FD
+
+;CREAR INPUT BOX MOVED
+LDX #$1F
+LDA #$00
+cpy_loop:
+STA $0640, X
+DEX
+BPL cpy_loop
+
+;restore 11
+LDA #$11
+STA $06a1
+
+;exit
+RTS
+
+
+----------------
+0001351A : 0A コ
+0001351B : 2A レ
+0001351C : 2D ヲ
+0001351D : 00 
+0001351E : 06 カ
+0001351F : 07 キ
+00013520 : 14 ト
+00013521 : 22 メ
+00013522 : 13 テ
+00013523 : 00 
+00013524 : 05 オ
+00013525 : 08 ク
+00013526 : 06 カ
+00013527 : 2F ゜
+00013528 : 26 ヨ
+00013529 : 02 イ
+
+-----------
+
+BANK7
+BDE4~　PREPARE_PASSWORD
+
+JSR BE75	;GENERATE PASSWORD TO $640
+
+-----------
+
+SAVE TO SRAM
+JSR $BE75
+
+;copy 640h-660h to 6020h-6020h
+LDX #$1F
+cpy_loop:
+LDA $0640, X
+STA $6020, X
+DEX
+BPL cpy_loop
+
+;exit
+RTS
+
+-----------------
+ドラクエ2だいぶ拡張パッチ
+  SRAM:6160h-6189h
+
+星をみるひと saveパッチ
+ SRAM:6000h-6100h
+
+互換性のため、セーブエリアは6200h-に決定
+↑のセーブルーチンのアドレスを変更
+
+
+-----------
+
+SRAMダンプしたときに分かりづらいので、6200hにGARIOUSと記名するようにした
+GARIOUSはもともとFFE9h-にあった文字列で、NULL文字までコピーするので
+リセットベクタ書き換わったら死ぬかも
